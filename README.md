@@ -2,7 +2,7 @@
 <img width="1200" height="475" alt="GHBanner" src="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT0R4q9_oi3JLxMljIPHR-n4w0vVO122VCHuA&s" />
 </div>
 
-# Run and deploy your AI Studio app
+# Run and deploy PO REMINDER app
 
 This contains everything you need to run your app locally.
 
