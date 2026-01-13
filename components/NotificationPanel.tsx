@@ -82,7 +82,7 @@ const NotificationPanel: React.FC<NotificationPanelProps> = ({
       
       {notifications.length > 0 && (
         <div className="p-3 bg-slate-50 border-t border-slate-100 text-center">
-           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Calculated by Sentinel Intelligence</p>
+           <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Calculated by Reminder Intelligence</p>
         </div>
       )}
     </div>

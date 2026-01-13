@@ -52,7 +52,7 @@ const AIAssistant: React.FC<AIAssistantProps> = ({ pos }) => {
               <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
               </div>
-              <span className="font-bold">Sentinel AI</span>
+              <span className="font-bold">Reminder AI</span>
             </div>
             <button onClick={() => setIsOpen(false)} className="text-white/80 hover:text-white">
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg>

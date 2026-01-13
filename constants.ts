@@ -52,25 +52,31 @@ export const STATUS_COLORS: Record<POStatus, string> = {
   [POStatus.CANCELLED]: 'bg-red-200 text-red-900',
 };
 
-// Updated 8-tier urgency logic
+// Precise 11-tier urgency labels as requested
 export const URGENCY_LABELS = {
-  THREE_ACTION: 'Three Action',   // > 180 days (6 months)
-  DOUBLE_ACTION: 'Double Action', // > 90 days (3 months)
-  ACTION: 'Action',               // > 60 days (2 months)
-  OVERDUE: 'Overdue',             // > 30 days
-  DUE: 'Due',                     // 21 - 30 days
-  MEDIUM_DUE: 'Medium Due',       // 11 - 20 days
-  LATEST: 'Latest',               // 9 - 10 days
-  NEW: 'New'                      // 0 - 8 days
+  PO_1Y_DUE: 'PO 1Y Due',
+  PO_8M_DUE: 'PO 8M Due',
+  PO_6M_DUE: 'PO 6M Due',
+  PO_4M_DUE_ACTIONS: 'PO 4M Due Actions',
+  PO_3M_DUE_ACTION: 'PO 3M Due Action',
+  PO_1_5M_DUE_ACTION_MEDIUM: 'PO 1.5M Due Action Medium',
+  OVERDUE: 'Overdue',
+  DUE: 'Due',
+  MEDIUM_DUE: 'Medium Due',
+  LATEST: 'Latest',
+  NEW: 'New'
 };
 
 export const URGENCY_COLORS: Record<string, string> = {
-  [URGENCY_LABELS.THREE_ACTION]: 'bg-slate-900 text-white border-slate-950 shadow-inner',
-  [URGENCY_LABELS.DOUBLE_ACTION]: 'bg-rose-900 text-white border-rose-950',
-  [URGENCY_LABELS.ACTION]: 'bg-rose-600 text-white border-rose-700',
+  [URGENCY_LABELS.PO_1Y_DUE]: 'bg-slate-900 text-white border-slate-950 shadow-inner',
+  [URGENCY_LABELS.PO_8M_DUE]: 'bg-rose-950 text-white border-rose-950',
+  [URGENCY_LABELS.PO_6M_DUE]: 'bg-rose-800 text-white border-rose-900',
+  [URGENCY_LABELS.PO_4M_DUE_ACTIONS]: 'bg-rose-600 text-white border-rose-700',
+  [URGENCY_LABELS.PO_3M_DUE_ACTION]: 'bg-orange-500 text-white border-orange-600',
+  [URGENCY_LABELS.PO_1_5M_DUE_ACTION_MEDIUM]: 'bg-amber-400 text-amber-950 border-amber-500',
   [URGENCY_LABELS.OVERDUE]: 'bg-rose-100 text-rose-700 border-rose-200',
   [URGENCY_LABELS.DUE]: 'bg-amber-100 text-amber-700 border-amber-200',
   [URGENCY_LABELS.MEDIUM_DUE]: 'bg-blue-100 text-blue-700 border-blue-200',
-  [URGENCY_LABELS.LATEST]: 'bg-purple-100 text-purple-700 border-purple-200',
+  [URGENCY_LABELS.LATEST]: 'bg-teal-100 text-teal-700 border-teal-200',
   [URGENCY_LABELS.NEW]: 'bg-emerald-100 text-emerald-700 border-emerald-200',
 };

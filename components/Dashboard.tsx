@@ -4,13 +4,19 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { PurchaseOrder, POStatus, POPriority } from '../types';
 
 interface DashboardProps {
-  pos: PurchaseOrder[];
+  pos: (PurchaseOrder & { age: number })[];
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ pos }) => {
   const totalAmount = pos.reduce((sum, po) => sum + po.totalAmount, 0);
   const overdueCount = pos.filter(po => po.status === POStatus.OVERDUE).length;
   const highPriorityCount = pos.filter(po => po.priority === POPriority.HIGH).length;
+
+  // Logic for Oldest Active POs (excluding finished/cancelled)
+  const oldestActivePOs = pos
+    .filter(po => po.status !== POStatus.DELIVERED && po.status !== POStatus.CANCELLED)
+    .sort((a, b) => b.age - a.age)
+    .slice(0, 8);
 
   const statusData = Object.values(POStatus).map(status => ({
     name: status,
@@ -41,30 +47,49 @@ const Dashboard: React.FC<DashboardProps> = ({ pos }) => {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pipeline</p>
-          <p className="text-2xl font-black text-slate-800">${totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
-          <div className="mt-2 text-xs text-slate-500 flex items-center">
-            <span className="text-emerald-500 font-bold mr-1">↑ 12%</span> vs last month
+        {/* Changed from Total Pipeline to Oldest PO Tracker */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col min-h-[160px]">
+          <div className="flex justify-between items-start mb-3">
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Oldest Active POs</p>
+            <div className="flex h-2 w-2">
+              <span className="animate-ping absolute inline-flex h-2 w-2 rounded-full bg-rose-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+            </div>
+          </div>
+          <div className="space-y-1.5 flex-1 overflow-hidden">
+            {oldestActivePOs.length > 0 ? oldestActivePOs.map((po) => (
+              <div key={po.id} className="flex justify-between items-center group">
+                <span className="text-[11px] font-mono font-bold text-slate-700 truncate mr-2 group-hover:text-indigo-600 transition-colors">
+                  {po.poNumber}
+                </span>
+                <span className="text-[10px] font-black text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-100 whitespace-nowrap">
+                  {po.age}d
+                </span>
+              </div>
+            )) : (
+              <div className="h-full flex items-center justify-center">
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">All orders clear</p>
+              </div>
+            )}
           </div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col justify-center">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">High Priority</p>
           <p className="text-2xl font-black text-rose-600">{highPriorityCount}</p>
-          <div className="mt-2 text-xs text-slate-500">Requires immediate attention</div>
+          <div className="mt-2 text-xs text-slate-500">Immediate action items</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col justify-center">
           <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Overdue Orders</p>
           <p className="text-2xl font-black text-red-600">{overdueCount}</p>
-          <div className="mt-2 text-xs text-slate-500">Action required</div>
+          <div className="mt-2 text-xs text-slate-500">30+ days from order</div>
         </div>
 
-        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
-          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Volume</p>
-          <p className="text-2xl font-black text-indigo-600">{pos.length}</p>
-          <div className="mt-2 text-xs text-slate-500">Total Purchase Orders</div>
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow flex flex-col justify-center">
+          <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">Total Pipeline</p>
+          <p className="text-2xl font-black text-indigo-600">${totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}</p>
+          <div className="mt-2 text-xs text-slate-500">Net order value</div>
         </div>
       </div>
 

@@ -12,12 +12,12 @@ export const getAIPOResponse = async (query: string, pos: PurchaseOrder[]) => {
     vendor: p.vendor,
     due: p.deliveryDate,
     status: p.status,
-    priority: p.priority, // This will now correctly reference the priority field
+    priority: p.priority,
     amount: p.totalAmount
   }));
 
   const prompt = `
-    You are the Sentinel AI Procurement Assistant. 
+    You are the Purchase Order Reminder Assistant. 
     Below are the current Purchase Orders:
     ---
     ${JSON.stringify(context, null, 2)}
@@ -26,14 +26,14 @@ export const getAIPOResponse = async (query: string, pos: PurchaseOrder[]) => {
     
     Instructions:
     1. Be concise and professional.
-    2. Focus on "High" priority and "Overdue" orders if not specified.
+    2. Focus on high urgency and overdue orders if not specified.
     3. Use markdown bolding for PO numbers and dates.
-    4. If the user asks for a summary, give a quick breakdown of high-value vs high-priority orders.
+    4. If the user asks for a summary, give a quick breakdown of high-value vs high-urgency orders.
   `;
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3-pro-preview', // Upgraded for better reasoning/summarization
+      model: 'gemini-3-pro-preview',
       contents: prompt,
     });
     return response.text || "I'm sorry, I couldn't process that. Please try again.";
