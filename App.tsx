@@ -7,6 +7,7 @@ import POForm from './components/POForm';
 import AIAssistant from './components/AIAssistant';
 import ImportZone from './components/ImportZone';
 import NotificationPanel from './components/NotificationPanel';
+import ReminderModal from './components/ReminderModal';
 
 type DateFilterTarget = 'creationDate' | 'approveDate' | 'deliveryDate';
 
@@ -20,7 +21,13 @@ const App: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<POStatus | 'All'>('All');
   const [filterUrgency, setFilterUrgency] = useState<string | 'All'>('All');
+  const [filterItemCode, setFilterItemCode] = useState<string | 'All'>('All');
   
+  // Reminder States
+  const [isReminderDue, setIsReminderDue] = useState(false);
+  const [isReminderModalOpen, setIsReminderModalOpen] = useState(false);
+  const [lastReminderDate, setLastReminderDate] = useState<string>(() => localStorage.getItem('last_reminder_date') || '');
+
   // Notification States
   const [notifications, setNotifications] = useState<POAppNotification[]>([]);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
@@ -36,6 +43,39 @@ const App: React.FC = () => {
     localStorage.setItem('sentinel_pos', JSON.stringify(pos));
   }, [pos]);
 
+  // Automated Reminder Logic: Mon-Sat, after 9:30 AM
+  useEffect(() => {
+    const checkReminder = () => {
+      const now = new Date();
+      const day = now.getDay(); // 0=Sun, 1=Mon...6=Sat
+      const hours = now.getHours();
+      const minutes = now.getMinutes();
+      const todayStr = now.toISOString().split('T')[0];
+
+      const isWorkingDay = day >= 1 && day <= 6; // Mon-Sat
+      const isAfterTime = (hours > 9) || (hours === 9 && minutes >= 30);
+      const notSentToday = lastReminderDate !== todayStr;
+
+      if (isWorkingDay && isAfterTime && notSentToday) {
+        setIsReminderDue(true);
+      } else {
+        setIsReminderDue(false);
+      }
+    };
+
+    checkReminder();
+    const interval = setInterval(checkReminder, 60000); // Check every minute
+    return () => clearInterval(interval);
+  }, [lastReminderDate]);
+
+  const markReminderAsSent = () => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    localStorage.setItem('last_reminder_date', todayStr);
+    setLastReminderDate(todayStr);
+    setIsReminderDue(false);
+    setIsReminderModalOpen(false);
+  };
+
   // Browser Notification Request
   useEffect(() => {
     if ("Notification" in window) {
@@ -49,9 +89,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  /**
-   * World-class date formatter strictly outputting dd-mm-yyyy.
-   */
   const formatDisplayDate = (dateInput: any) => {
     if (dateInput === undefined || dateInput === null || String(dateInput).trim() === '') return '-';
     let date: Date;
@@ -85,10 +122,6 @@ const App: React.FC = () => {
     }
   };
 
-  /**
-   * getCalculatedPO
-   * Strictly calculates urgency and status based on duration from ORDER DATE to CURRENT DATE.
-   */
   const getCalculatedPO = (po: PurchaseOrder) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -101,29 +134,17 @@ const App: React.FC = () => {
     let urgency = URGENCY_LABELS.NEW;
     let status = po.status;
 
-    if (diffDays >= 365) {
-      urgency = URGENCY_LABELS.PO_1Y_DUE;
-    } else if (diffDays >= 240) {
-      urgency = URGENCY_LABELS.PO_8M_DUE;
-    } else if (diffDays >= 180) {
-      urgency = URGENCY_LABELS.PO_6M_DUE;
-    } else if (diffDays >= 120) {
-      urgency = URGENCY_LABELS.PO_4M_DUE_ACTIONS;
-    } else if (diffDays >= 90) {
-      urgency = URGENCY_LABELS.PO_3M_DUE_ACTION;
-    } else if (diffDays >= 45) {
-      urgency = URGENCY_LABELS.PO_1_5M_DUE_ACTION_MEDIUM;
-    } else if (diffDays > 30) {
-      urgency = URGENCY_LABELS.OVERDUE;
-    } else if (diffDays >= 21) {
-      urgency = URGENCY_LABELS.DUE;
-    } else if (diffDays >= 11) {
-      urgency = URGENCY_LABELS.MEDIUM_DUE;
-    } else if (diffDays >= 9) {
-      urgency = URGENCY_LABELS.LATEST;
-    } else {
-      urgency = URGENCY_LABELS.NEW;
-    }
+    if (diffDays >= 365) urgency = URGENCY_LABELS.PO_1Y_DUE;
+    else if (diffDays >= 240) urgency = URGENCY_LABELS.PO_8M_DUE;
+    else if (diffDays >= 180) urgency = URGENCY_LABELS.PO_6M_DUE;
+    else if (diffDays >= 120) urgency = URGENCY_LABELS.PO_4M_DUE_ACTIONS;
+    else if (diffDays >= 90) urgency = URGENCY_LABELS.PO_3M_DUE_ACTION;
+    else if (diffDays >= 45) urgency = URGENCY_LABELS.PO_1_5M_DUE_ACTION_MEDIUM;
+    else if (diffDays > 30) urgency = URGENCY_LABELS.OVERDUE;
+    else if (diffDays >= 21) urgency = URGENCY_LABELS.DUE;
+    else if (diffDays >= 11) urgency = URGENCY_LABELS.MEDIUM_DUE;
+    else if (diffDays >= 9) urgency = URGENCY_LABELS.LATEST;
+    else urgency = URGENCY_LABELS.NEW;
 
     if (diffDays > 30 && status !== POStatus.DELIVERED && status !== POStatus.CANCELLED) {
       status = POStatus.OVERDUE;
@@ -133,6 +154,12 @@ const App: React.FC = () => {
   };
 
   const processedPOs = useMemo(() => pos.map(getCalculatedPO), [pos]);
+
+  const uniqueItemCodes = useMemo(() => {
+    const codes = new Set<string>();
+    pos.forEach(po => { if (po.itemCode) codes.add(po.itemCode); });
+    return Array.from(codes).sort();
+  }, [pos]);
 
   useEffect(() => {
     const newNotifications: POAppNotification[] = [];
@@ -151,7 +178,7 @@ const App: React.FC = () => {
           poId: po.id,
           poNumber: po.poNumber,
           title: `Critical Alert: ${po.calculatedUrgency}`,
-          message: `${po.vendor}'s order age is ${po.age} days. Action required.`,
+          message: `${po.vendor}'s order age is ${po.age} days.`,
           type: 'critical',
           timestamp: Date.now(),
           isRead: false
@@ -163,12 +190,9 @@ const App: React.FC = () => {
       const existingIds = new Set(prev.map(n => n.id));
       const filteredNew = newNotifications.filter(n => !existingIds.has(n.id));
       if (filteredNew.length === 0) return prev;
-      if (hasNotifPermission) {
-        filteredNew.forEach(n => { new Notification(n.title, { body: n.message }); });
-      }
       return [...filteredNew, ...prev].slice(0, 50);
     });
-  }, [processedPOs, hasNotifPermission]);
+  }, [processedPOs]);
 
   const filteredPOs = useMemo(() => {
     return processedPOs.filter(po => {
@@ -177,6 +201,7 @@ const App: React.FC = () => {
                            (po.itemCode && po.itemCode.toLowerCase().includes(searchTerm.toLowerCase()));
       const matchesStatus = filterStatus === 'All' || po.status === filterStatus;
       const matchesUrgency = filterUrgency === 'All' || po.calculatedUrgency === filterUrgency;
+      const matchesItemCode = filterItemCode === 'All' || po.itemCode === filterItemCode;
       
       let matchesDateRange = true;
       const targetDateStr = po[dateFilterType];
@@ -196,18 +221,15 @@ const App: React.FC = () => {
           }
         }
       }
-      return matchesSearch && matchesStatus && matchesUrgency && matchesDateRange;
+      return matchesSearch && matchesStatus && matchesUrgency && matchesItemCode && matchesDateRange;
     }).sort((a, b) => b.age - a.age);
-  }, [processedPOs, searchTerm, filterStatus, filterUrgency, dateFilterType, startDate, endDate]);
+  }, [processedPOs, searchTerm, filterStatus, filterUrgency, filterItemCode, dateFilterType, startDate, endDate]);
 
   const handleSavePO = (data: Omit<PurchaseOrder, 'id'>) => {
     if (editingPo) {
       setPos(prev => prev.map(p => p.id === editingPo.id ? { ...data, id: editingPo.id } : p));
     } else {
-      const newPO: PurchaseOrder = {
-        ...data,
-        id: Math.random().toString(36).substr(2, 9),
-      };
+      const newPO: PurchaseOrder = { ...data, id: Math.random().toString(36).substr(2, 9) };
       setPos(prev => [newPO, ...prev]);
     }
     setIsFormOpen(false);
@@ -220,24 +242,20 @@ const App: React.FC = () => {
   };
 
   const handleDelete = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this purchase order?')) {
+    if (window.confirm('Delete this purchase order?')) {
       setPos(prev => prev.filter(p => p.id !== id));
     }
   };
 
   const handleReset = () => {
-    if (window.confirm('WARNING: This will permanently delete all records and reset the system. Proceed?')) {
+    if (window.confirm('WARNING: Permanent system reset. Proceed?')) {
       setPos([]);
       localStorage.removeItem('sentinel_pos');
       window.location.reload(); 
     }
   };
 
-  const clearDateFilters = () => {
-    setStartDate('');
-    setEndDate('');
-  };
-
+  const clearDateFilters = () => { setStartDate(''); setEndDate(''); };
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
@@ -255,14 +273,19 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <ImportZone onImport={handleImport} />
+            
+            {/* Reminder Pulsing Button */}
             <button 
-              onClick={handleReset}
-              className="flex items-center space-x-2 px-3 py-2 border border-rose-200 text-rose-600 rounded-lg hover:bg-rose-50 font-bold text-sm transition-all active:scale-95"
+              onClick={() => setIsReminderModalOpen(true)}
+              className={`relative p-2 rounded-xl transition-all ${isReminderDue ? 'bg-rose-50 text-rose-600 ring-2 ring-rose-500 ring-offset-2 animate-pulse' : 'text-slate-400 hover:text-indigo-600'}`}
+              title="Daily Reminder Service"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-              <span className="hidden lg:inline">Reset System</span>
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path></svg>
+              {isReminderDue && <span className="absolute -top-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-rose-500"></span></span>}
             </button>
+
             <div className="h-8 w-px bg-slate-200 mx-1"></div>
+            
             <div className="relative">
               <button onClick={() => setIsNotifOpen(!isNotifOpen)} className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-50 rounded-xl transition-all relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path></svg>
@@ -307,7 +330,7 @@ const App: React.FC = () => {
                   <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                     <svg className="h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
                   </span>
-                  <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search vendor, PO#, or code..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl outline-none text-sm w-full md:w-64 transition-all" />
+                  <input type="text" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="Search..." className="pl-9 pr-4 py-2 border border-slate-200 rounded-xl outline-none text-sm w-full md:w-64 transition-all" />
                 </div>
               </div>
             </div>
@@ -327,6 +350,13 @@ const App: React.FC = () => {
                       {Object.values(POStatus).map(s => <option key={s} value={s}>{s}</option>)}
                     </select>
                   </div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Item Code:</span>
+                    <select value={filterItemCode} onChange={e => setFilterItemCode(e.target.value)} className="bg-white px-3 py-1 rounded-lg border border-slate-200 text-xs font-bold text-slate-700 max-w-[150px]">
+                      <option value="All">All Codes</option>
+                      {uniqueItemCodes.map(code => <option key={code} value={code}>{code}</option>)}
+                    </select>
+                  </div>
                </div>
                <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                   <select value={dateFilterType} onChange={e => setDateFilterType(e.target.value as DateFilterTarget)} className="bg-white px-2 py-1 rounded-lg border border-slate-200 text-[11px] font-bold text-slate-700">
@@ -338,7 +368,6 @@ const App: React.FC = () => {
                     <span className="text-slate-300">-</span>
                     <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="bg-white px-2 py-1 rounded-lg border border-slate-200 text-[11px] text-slate-700" />
                   </div>
-                  {(startDate || endDate) && (<button onClick={clearDateFilters} className="text-rose-500 p-1 hover:bg-rose-50 rounded-md"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>)}
                </div>
             </div>
           </div>
@@ -348,13 +377,11 @@ const App: React.FC = () => {
                 <tr>
                   <th className="px-6 py-4">PO Number</th>
                   <th className="px-6 py-4">Urgency</th>
+                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Order Date</th>
                   <th className="px-6 py-4">Due Date</th>
                   <th className="px-6 py-4">Vendor Name</th>
                   <th className="px-6 py-4">Item Code</th>
-                  <th className="px-6 py-4">Unit Price</th>
-                  <th className="px-6 py-4">Quantity</th>
-                  <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4 text-right">Admin</th>
                 </tr>
               </thead>
@@ -363,13 +390,11 @@ const App: React.FC = () => {
                   <tr key={po.id} className={`hover:bg-slate-50/30 transition-colors group ${po.status === POStatus.OVERDUE ? 'bg-rose-50/50' : ''}`}>
                     <td className="px-6 py-4"><div className="text-sm font-black text-slate-800">{po.poNumber}</div></td>
                     <td className="px-6 py-4"><span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[9px] font-black uppercase border shadow-sm ${URGENCY_COLORS[po.calculatedUrgency]}`}>{po.calculatedUrgency}</span></td>
+                    <td className="px-6 py-4"><span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${STATUS_COLORS[po.status]}`}>{po.status}</span></td>
                     <td className="px-6 py-4"><div className="text-xs font-bold text-slate-600">{formatDisplayDate(po.creationDate)}</div></td>
                     <td className="px-6 py-4"><div className="text-xs font-black text-indigo-600">{formatDisplayDate(po.deliveryDate)}</div></td>
                     <td className="px-6 py-4"><div className="text-sm font-bold text-slate-700">{po.vendor}</div></td>
                     <td className="px-6 py-4"><div className="text-xs font-mono text-slate-500">{po.itemCode || '-'}</div></td>
-                    <td className="px-6 py-4"><div className="text-sm font-bold text-slate-800">{po.unitPrice?.toLocaleString() || '-'}</div></td>
-                    <td className="px-6 py-4"><div className="text-sm font-bold text-slate-800">{po.quantity || '-'}</div></td>
-                    <td className="px-6 py-4"><span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[9px] font-black uppercase ${STATUS_COLORS[po.status]}`}>{po.status}</span></td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button onClick={() => { setEditingPo(po); setIsFormOpen(true); }} className="p-1.5 text-indigo-600 hover:bg-indigo-50 rounded-lg"><svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path></svg></button>
@@ -378,14 +403,17 @@ const App: React.FC = () => {
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={10} className="px-6 py-20 text-center"><p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No records found</p></td></tr>
+                  <tr><td colSpan={8} className="px-6 py-20 text-center"><p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No records found</p></td></tr>
                 )}
               </tbody>
             </table>
           </div>
         </div>
       </main>
+      
       {isFormOpen && (<POForm onSave={handleSavePO} onCancel={() => setIsFormOpen(false)} initialData={editingPo} />)}
+      {isReminderModalOpen && (<ReminderModal pos={processedPOs} onSent={markReminderAsSent} onCancel={() => setIsReminderModalOpen(false)} />)}
+      
       <AIAssistant pos={processedPOs} />
       <footer className="mt-auto py-8 bg-white border-t border-slate-200">
         <div className="max-w-7xl mx-auto px-4 text-center">
