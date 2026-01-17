@@ -6,6 +6,7 @@ import Dashboard from './components/Dashboard';
 import POForm from './components/POForm';
 import AIAssistant from './components/AIAssistant';
 import ImportZone from './components/ImportZone';
+import ExportButton from './components/ExportButton';
 import NotificationPanel from './components/NotificationPanel';
 import ReminderModal from './components/ReminderModal';
 
@@ -273,6 +274,7 @@ const App: React.FC = () => {
           </div>
           <div className="flex items-center space-x-2">
             <ImportZone onImport={handleImport} />
+            <ExportButton filteredPOs={filteredPOs} />
             
             <button 
               onClick={() => setIsReminderModalOpen(true)}
