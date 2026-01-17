@@ -274,7 +274,6 @@ const App: React.FC = () => {
           <div className="flex items-center space-x-2">
             <ImportZone onImport={handleImport} />
             
-            {/* Reminder Pulsing Button */}
             <button 
               onClick={() => setIsReminderModalOpen(true)}
               className={`relative p-2 rounded-xl transition-all ${isReminderDue ? 'bg-rose-50 text-rose-600 ring-2 ring-rose-500 ring-offset-2 animate-pulse' : 'text-slate-400 hover:text-indigo-600'}`}
@@ -381,6 +380,9 @@ const App: React.FC = () => {
                   <th className="px-6 py-4">Order Date</th>
                   <th className="px-6 py-4">Due Date</th>
                   <th className="px-6 py-4">Vendor Name</th>
+                  <th className="px-6 py-4">Quantity</th>
+                  <th className="px-6 py-4">Pending Qty</th>
+                  <th className="px-6 py-4">Description</th>
                   <th className="px-6 py-4">Item Code</th>
                   <th className="px-6 py-4 text-right">Admin</th>
                 </tr>
@@ -394,6 +396,9 @@ const App: React.FC = () => {
                     <td className="px-6 py-4"><div className="text-xs font-bold text-slate-600">{formatDisplayDate(po.creationDate)}</div></td>
                     <td className="px-6 py-4"><div className="text-xs font-black text-indigo-600">{formatDisplayDate(po.deliveryDate)}</div></td>
                     <td className="px-6 py-4"><div className="text-sm font-bold text-slate-700">{po.vendor}</div></td>
+                    <td className="px-6 py-4"><div className="text-sm font-bold text-slate-800">{po.quantity || '-'}</div></td>
+                    <td className="px-6 py-4"><div className="text-sm font-bold text-slate-800">{po.pendingQuantity || '-'}</div></td>
+                    <td className="px-6 py-4"><div className="text-xs text-slate-500 font-medium max-w-[200px] whitespace-normal line-clamp-2">{po.itemDescription || '-'}</div></td>
                     <td className="px-6 py-4"><div className="text-xs font-mono text-slate-500">{po.itemCode || '-'}</div></td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex justify-end space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -403,7 +408,7 @@ const App: React.FC = () => {
                     </td>
                   </tr>
                 )) : (
-                  <tr><td colSpan={8} className="px-6 py-20 text-center"><p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No records found</p></td></tr>
+                  <tr><td colSpan={11} className="px-6 py-20 text-center"><p className="text-slate-400 font-bold uppercase tracking-widest text-xs">No records found</p></td></tr>
                 )}
               </tbody>
             </table>
