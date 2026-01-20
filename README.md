@@ -2,7 +2,7 @@
 
 This contains everything you need to run your app locally.
 
-View your app in PO Reminder App: https://ai.studio/apps/drive/1rJbLqdlBlIfgHoJzF4TXxkPXC2KUSfcq
+View Our PO Reminder App: https://ai.studio/apps/drive/1rJbLqdlBlIfgHoJzF4TXxkPXC2KUSfcq
 
 ## Run Locally
 
